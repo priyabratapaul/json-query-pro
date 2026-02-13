@@ -1,0 +1,5 @@
+{
+  "name": "JSON Query Pro",
+  "description": "An immersive JSON viewer and query tool with tree visualization, field selection, and real-time query execution.",
+  "requestFramePermissions": []
+}
