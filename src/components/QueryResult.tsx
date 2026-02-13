@@ -66,11 +66,7 @@ const QueryResult: React.FC<QueryResultProps> = ({ result, settings, onExportReq
   if (result === undefined) {
     return (
       <div className="flex flex-col items-center justify-center min-h-full text-slate-400 p-8 text-center italic">
-        <svg className="w-12 h-12 mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
         <p className="text-[1.1em] font-medium">{labels.noData}</p>
-        <p className="text-[0.75em] mt-2 opacity-50 not-italic uppercase tracking-widest font-bold">The path does not exist in the source JSON</p>
       </div>
     );
   }
