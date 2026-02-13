@@ -192,7 +192,7 @@ export const developerConfig = {
       appName: 'JSON Query Pro',
       version: 'v1.0.0',
       visionHeader: 'Vision',
-      visionText: 'JSON Query Pro is a high-performance, developer-first tool designed to handle massive data structures with ease. Our goal is to make data exploration and extraction as seamless as possible for engineers.',
+      visionText: 'JSON Query Pro is a high-performance, developer-first tool designed to handle massive data structures with ease. My goal is to make data exploration and extraction as seamless as possible for fellow engineers and any interested users.',
       archHeader: 'Architecture',
       archText: 'Built on a recursive tree-rendering engine and powered by JSONata for high-performance transformations.',
       devName: 'Priyabrata Paul',
