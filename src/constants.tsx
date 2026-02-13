@@ -2,8 +2,8 @@
 import React from 'react';
 
 export const FONT_FAMILIES = [
-  { label: 'Monospace', value: 'font-mono' },
   { label: 'Sans Serif', value: 'font-sans' },
+  { label: 'Monospace', value: 'font-mono' },
   { label: 'Serif', value: 'font-serif' },
 ];
 
