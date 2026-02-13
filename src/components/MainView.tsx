@@ -259,19 +259,15 @@ const MainView: React.FC<MainViewProps> = ({ jsonData, setJsonData, settings, sa
 
   return (
     <div ref={containerRef} className={`flex flex-col lg:flex-row h-full gap-4 lg:gap-0 relative overflow-y-auto lg:overflow-hidden custom-scrollbar ${isResizing ? 'select-none' : ''}`}>
+      {/* Loading Animation Box */}
       {isProcessing && (
-        <div className="absolute inset-0 z-[100] bg-white/40 dark:bg-slate-900/40 backdrop-blur-[2px] flex flex-col items-center justify-center">
-          <div className="flex flex-col items-center gap-4 p-8 bg-white dark:bg-slate-900 shadow-2xl rounded-3xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
-             <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-800 border-t-blue-500 rounded-full animate-spin" />
-             <div className="text-center">
-               <p className="text-[0.8em] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">Processing Engine</p>
-               <p className="text-[0.65em] font-bold text-slate-400 uppercase mt-1">Direct Worker Memory Access...</p>
+        <div className="absolute inset-0 z-[100] bg-white/40 dark:bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center">
+          <div className={`p-8 bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300 ${cornerClass}`}>
+             <div className="flex space-x-2">
+               <div className="w-3 h-3 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse"></div>
+               <div className="w-3 h-3 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse [animation-delay:-0.3s]"></div>
+               <div className="w-3 h-3 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse [animation-delay:-0.15s]"></div>
              </div>
-             {loadProgress > 0 && (
-               <div className="w-48 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
-                 <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${loadProgress}%` }} />
-               </div>
-             )}
           </div>
         </div>
       )}
