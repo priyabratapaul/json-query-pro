@@ -16,6 +16,8 @@ interface QueryEditorProps {
   settings: AppSettings;
   autoExecute: boolean;
   setAutoExecute: (val: boolean) => void;
+  autoSuggestions: boolean;
+  setAutoSuggestions: (val: boolean) => void;
   jsonData: any;
 }
 
@@ -31,6 +33,8 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
   settings,
   autoExecute,
   setAutoExecute,
+  autoSuggestions,
+  setAutoSuggestions,
   jsonData
 }) => {
   const [copiedHeader, setCopiedHeader] = useState(false);
@@ -78,6 +82,10 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
   };
 
   const updateSuggestions = (val: string, pos: number) => {
+    if (!autoSuggestions) {
+      setShowSuggestions(false);
+      return;
+    }
     const textBeforeCursor = val.substring(0, pos);
     
     // 1. Determine "base path"
@@ -241,13 +249,28 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
 
             {/* Auto Execute Toggle */}
             <div className="flex items-center gap-2">
-              <span className="text-[0.6em] font-black text-slate-400 uppercase tracking-tighter">{labels.autoExecuteLabel}</span>
+              <span className={`text-[0.6em] font-black uppercase tracking-tighter transition-colors ${autoExecute ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400'}`}>{labels.autoExecuteLabel}</span>
               <button 
                 onClick={() => setAutoExecute(!autoExecute)}
-                className={`w-8 h-4 bg-slate-200 dark:bg-slate-800 relative transition-colors ${togglePillClass} ${autoExecute ? 'bg-blue-500 dark:bg-blue-600' : ''}`}
+                className={`w-8 h-4 relative transition-all duration-300 ${togglePillClass} ${autoExecute ? 'bg-blue-400 dark:bg-blue-500 shadow-[0_0_8px_rgba(96,165,250,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`}
               >
                 <div 
-                  className={`absolute top-0.5 w-3 h-3 bg-white transition-all shadow-sm ${togglePillClass} ${autoExecute ? 'left-[1.1rem]' : 'left-0.5'}`}
+                  className={`absolute top-0.5 w-3 h-3 bg-white transition-all duration-300 shadow-sm ${togglePillClass} ${autoExecute ? 'left-[1.1rem]' : 'left-0.5'}`}
+                />
+              </button>
+            </div>
+
+            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+            {/* Auto Suggestions Toggle */}
+            <div className="flex items-center gap-2">
+              <span className={`text-[0.6em] font-black uppercase tracking-tighter transition-colors ${autoSuggestions ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400'}`}>Suggestions</span>
+              <button 
+                onClick={() => setAutoSuggestions(!autoSuggestions)}
+                className={`w-8 h-4 relative transition-all duration-300 ${togglePillClass} ${autoSuggestions ? 'bg-emerald-400 dark:bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]' : 'bg-slate-200 dark:bg-slate-800'}`}
+              >
+                <div 
+                  className={`absolute top-0.5 w-3 h-3 bg-white transition-all duration-300 shadow-sm ${togglePillClass} ${autoSuggestions ? 'left-[1.1rem]' : 'left-0.5'}`}
                 />
               </button>
             </div>

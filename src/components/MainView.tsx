@@ -34,6 +34,11 @@ const MainView: React.FC<MainViewProps> = ({ jsonData, setJsonData, settings, sa
     const saved = localStorage.getItem('json_query_auto_execute');
     return saved !== null ? saved === 'true' : developerConfig.features.autoExecuteQuery;
   });
+
+  const [autoSuggestions, setAutoSuggestions] = useState<boolean>(() => {
+    const saved = localStorage.getItem('json_query_auto_suggestions');
+    return saved !== null ? saved === 'true' : true;
+  });
   
   const [treeWidth, setTreeWidth] = useState<number>(() => {
     const saved = localStorage.getItem('json_query_tree_width');
@@ -128,7 +133,8 @@ const MainView: React.FC<MainViewProps> = ({ jsonData, setJsonData, settings, sa
     localStorage.setItem('json_query_mode', queryMode);
     localStorage.setItem('json_query_tree_width', treeWidth.toString());
     localStorage.setItem('json_query_auto_execute', autoExecute.toString());
-  }, [standardQuery, sqlQuery, queryMode, treeWidth, autoExecute]);
+    localStorage.setItem('json_query_auto_suggestions', autoSuggestions.toString());
+  }, [standardQuery, sqlQuery, queryMode, treeWidth, autoExecute, autoSuggestions]);
 
   const handleExecute = () => {
     if (!workerRef.current) return;
@@ -334,7 +340,9 @@ const MainView: React.FC<MainViewProps> = ({ jsonData, setJsonData, settings, sa
             setQuery={queryMode === 'standard' ? setStandardQuery : setSqlQuery} 
             mode={queryMode} setMode={setQueryMode} onExecute={handleExecute}
             onLoadSaved={(q) => { setQueryMode(q.mode); if (q.mode === 'standard') setStandardQuery(q.query); else setSqlQuery(q.query); }}
-            savedQueries={savedQueries} setSavedQueries={setSavedQueries} settings={settings} autoExecute={autoExecute} setAutoExecute={setAutoExecute}
+            savedQueries={savedQueries} setSavedQueries={setSavedQueries} settings={settings} 
+            autoExecute={autoExecute} setAutoExecute={setAutoExecute}
+            autoSuggestions={autoSuggestions} setAutoSuggestions={setAutoSuggestions}
             jsonData={jsonData}
           />
         </div>
