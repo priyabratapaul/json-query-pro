@@ -1,5 +1,5 @@
 import jsonata from 'jsonata';
-import { jsonToCsv } from './utils/jsonQuery';
+import { jsonToCsv } from '../utils/jsonQuery';
 
 let rawData: any = null;
 let lastQueryResult: any = null;
@@ -249,12 +249,27 @@ self.onmessage = async (e: MessageEvent) => {
 
       case 'QUERY':
         const { queryStr, mode: qMode } = payload;
+        const cleanQuery = (queryStr || '').trim();
         let queryResult;
-        if (qMode === 'standard') {
-          queryResult = evaluatePath(rawData, queryStr);
+
+        if (!cleanQuery || cleanQuery === '$') {
+          queryResult = rawData;
+        } else if (qMode === 'standard') {
+          queryResult = evaluatePath(rawData, cleanQuery);
         } else {
-          const expression = jsonata(queryStr);
-          queryResult = await expression.evaluate(rawData);
+          try {
+            const jsonataFunc = (jsonata as any).default || jsonata;
+            if (typeof jsonataFunc !== 'function') {
+              throw new Error(`JSONata engine is not a function (type: ${typeof jsonataFunc})`);
+            }
+            const expression = jsonataFunc(cleanQuery);
+            queryResult = await expression.evaluate(rawData);
+          } catch (jsonataErr: any) {
+            const msg = jsonataErr.message || String(jsonataErr);
+            const pos = jsonataErr.position || 'unknown';
+            const charCode = cleanQuery.length > 0 ? cleanQuery.charCodeAt(0) : 'N/A';
+            throw new Error(`JSONata Error: ${msg} (at pos ${pos}, first char code: ${charCode}). Query: "${cleanQuery}"`);
+          }
         }
 
         // Cache the result for future export even if it's too large to transfer now
