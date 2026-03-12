@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { developerConfig } from '../developerConfig';
 import { QueryMode, AppSettings, SavedQuery } from '../types';
 import Popover from './Popover';
-import { getAllKeys } from '../utils/jsonQuery';
+import { getAllKeys, getKeysAtLevel } from '../utils/jsonQuery';
 
 interface QueryEditorProps {
   query: string;
@@ -43,15 +43,14 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [currentWord, setCurrentWord] = useState('');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const historyBtnRef = useRef<HTMLButtonElement>(null);
   const saveBtnRef = useRef<HTMLButtonElement>(null);
   const { editor: labels } = developerConfig.labels;
 
-  // Extract keys for autocomplete
-  const availableKeys = useMemo(() => getAllKeys(jsonData), [jsonData]);
+  // Extract all keys for fallback autocomplete
+  const allKeys = useMemo(() => getAllKeys(jsonData), [jsonData]);
 
   const handleCopyHeader = async () => {
     if (!query) return;
@@ -78,41 +77,83 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
     setQuerySaveName('');
   };
 
+  const updateSuggestions = (val: string, pos: number) => {
+    const textBeforeCursor = val.substring(0, pos);
+    
+    // 1. Determine "base path"
+    let basePath = '$';
+    let lastSeparatorIndex = -1;
+    let insideBackticks = false;
+    for (let i = 0; i < textBeforeCursor.length; i++) {
+      if (textBeforeCursor[i] === '`') insideBackticks = !insideBackticks;
+      if (!insideBackticks) {
+        if (textBeforeCursor[i] === '.' || textBeforeCursor[i] === '[' || textBeforeCursor[i] === '(') {
+          lastSeparatorIndex = i;
+        }
+      }
+    }
+
+    let segmentAfterSeparator = '';
+    if (lastSeparatorIndex !== -1) {
+      basePath = textBeforeCursor.substring(0, lastSeparatorIndex);
+      segmentAfterSeparator = textBeforeCursor.substring(lastSeparatorIndex + 1);
+      if (!basePath || basePath === '$') basePath = '$';
+    } else {
+      segmentAfterSeparator = textBeforeCursor.replace(/^\$/, '');
+      basePath = '$';
+    }
+
+    // 2. Determine "current word" from the segment after the separator
+    // We look for the last alphanumeric/$ word or backticked string
+    const wordMatch = segmentAfterSeparator.match(/(`[^`]*`|[\w$]+)$/);
+    const currentWord = wordMatch ? wordMatch[0] : '';
+
+    // Clean up currentWord from backticks for matching
+    const searchWord = currentWord.replace(/^`|`$/g, '');
+
+    // 3. Get keys at this level
+    // For evaluatePath, we need to clean up backticks from basePath if it's JSONata style
+    const cleanBasePath = basePath.replace(/`/g, '');
+    let levelKeys = getKeysAtLevel(jsonData, cleanBasePath);
+    
+    // 4. Fallback to all keys if at root and no keys found
+    if (levelKeys.length === 0 && cleanBasePath === '$') {
+      levelKeys = allKeys;
+    }
+
+    // 5. Filter by current word
+    const filtered = levelKeys.filter(k => 
+      k.toLowerCase().startsWith(searchWord.toLowerCase()) && k !== searchWord
+    );
+    
+    if (filtered.length > 0) {
+      setSuggestions(filtered.slice(0, 10));
+      setSuggestionIndex(0);
+      setShowSuggestions(true);
+      
+      // Position estimation
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines.length;
+      const currentChar = lines[lines.length - 1].length;
+      setSuggestionPos({
+        top: currentLine * 24 + 10,
+        left: currentChar * 9 + 20
+      });
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     const pos = e.target.selectionStart;
     setQuery(val);
+    updateSuggestions(val, pos);
+  };
 
-    // Autocomplete logic
-    const textBeforeCursor = val.substring(0, pos);
-    const match = textBeforeCursor.match(/[\w$]+$/);
-    
-    if (match) {
-      const word = match[0];
-      setCurrentWord(word);
-      const filtered = availableKeys.filter(k => 
-        k.toLowerCase().startsWith(word.toLowerCase()) && k !== word
-      );
-      
-      if (filtered.length > 0) {
-        setSuggestions(filtered.slice(0, 10));
-        setSuggestionIndex(0);
-        setShowSuggestions(true);
-        
-        // Basic position estimation (not perfect for textarea but okay for now)
-        // In a real app we might use a library or a hidden mirror div
-        const lines = textBeforeCursor.split('\n');
-        const currentLine = lines.length;
-        const currentChar = lines[lines.length - 1].length;
-        setSuggestionPos({
-          top: currentLine * 24 + 10, // Rough line height
-          left: currentChar * 9 + 20   // Rough char width
-        });
-      } else {
-        setShowSuggestions(false);
-      }
-    } else {
-      setShowSuggestions(false);
+  const handleCursorMove = () => {
+    if (textareaRef.current) {
+      updateSuggestions(textareaRef.current.value, textareaRef.current.selectionStart);
     }
   };
 
@@ -122,19 +163,29 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
     const textBeforeCursor = query.substring(0, pos);
     const textAfterCursor = query.substring(pos);
     
-    const lastWordMatch = textBeforeCursor.match(/[\w$]+$/);
-    if (lastWordMatch) {
-      const newTextBefore = textBeforeCursor.substring(0, lastWordMatch.index) + suggestion;
-      setQuery(newTextBefore + textAfterCursor);
-      
-      // Reset cursor position after state update
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newTextBefore.length;
-          textareaRef.current.focus();
-        }
-      }, 0);
+    // Find where the last word starts
+    // We look for the last alphanumeric/$ word or backticked string immediately before the cursor
+    const wordMatch = textBeforeCursor.match(/(`[^`]*`|[\w$]+)$/);
+    const lastWordStart = wordMatch ? wordMatch.index! : pos;
+    
+    // Logic for backticks in JSONata
+    let finalSuggestion = suggestion;
+    if (mode === 'sql') {
+      const needsBackticks = /^\d/.test(suggestion) || /[^\w$]/.test(suggestion);
+      if (needsBackticks) {
+        finalSuggestion = `\`${suggestion}\``;
+      }
     }
+
+    const newTextBefore = textBeforeCursor.substring(0, lastWordStart) + finalSuggestion;
+    setQuery(newTextBefore + textAfterCursor);
+    
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newTextBefore.length;
+        textareaRef.current.focus();
+      }
+    }, 0);
     setShowSuggestions(false);
   };
 
@@ -252,6 +303,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
           value={query}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
+          onSelect={handleCursorMove}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           className={`flex-1 w-full bg-slate-50 dark:bg-slate-950 p-4 font-mono text-[1em] focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700 resize-none border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 ${inputCornerClass}`}
           placeholder={mode === 'sql' ? labels.placeholders.sql : labels.placeholders.standard}
@@ -277,6 +329,16 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
                 {s}
               </button>
             ))}
+            <div className="border-t border-slate-100 dark:border-slate-700" />
+            <button
+              onClick={() => setShowSuggestions(false)}
+              className="w-full text-left px-3 py-1.5 text-[0.7em] font-bold uppercase tracking-wider text-slate-400 hover:text-red-500 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-between"
+            >
+              <span>Close</span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
         

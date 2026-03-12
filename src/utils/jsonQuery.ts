@@ -4,7 +4,7 @@ import jsonata from 'jsonata';
  * Native Path Evaluator
  * Safely traverses an object based on a string path like "$.company.departments[0]"
  */
-const evaluatePath = (data: any, path: string): any => {
+export const evaluatePath = (data: any, path: string): any => {
   let segmentString = (path || '').trim();
   if (!segmentString || segmentString === '$') return data;
 
@@ -30,12 +30,37 @@ const evaluatePath = (data: any, path: string): any => {
     if (segment.startsWith('[') && segment.endsWith(']')) {
       const indexStr = segment.substring(1, segment.length - 1);
       const index = parseInt(indexStr, 10);
-      current = Array.isArray(current) ? current[index] : undefined;
+      if (!isNaN(index)) {
+        current = Array.isArray(current) ? current[index] : undefined;
+      } else if (Array.isArray(current) && current.length > 0) {
+        // If it's a filter or non-numeric index, fallback to first element for schema discovery
+        current = current[0];
+      } else {
+        current = undefined;
+      }
     } else {
       current = current[segment];
     }
   }
   return current;
+};
+
+/**
+ * Gets keys at a specific level in the JSON data.
+ */
+export const getKeysAtLevel = (data: any, path: string): string[] => {
+  const target = evaluatePath(data, path);
+  if (!target || typeof target !== 'object') return [];
+  
+  if (Array.isArray(target)) {
+    // If it's an array, we look at the first item's keys
+    if (target.length > 0 && typeof target[0] === 'object' && target[0] !== null) {
+      return Object.keys(target[0]).sort();
+    }
+    return [];
+  }
+  
+  return Object.keys(target).sort();
 };
 
 /**
