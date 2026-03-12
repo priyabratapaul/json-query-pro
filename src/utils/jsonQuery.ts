@@ -58,8 +58,10 @@ const evaluateJsonata = async (data: any, query: string): Promise<any> => {
     const result = await expression.evaluate(data);
     return result;
   } catch (e: any) {
-    console.warn("JSONata Evaluation failed:", e);
-    return `Query Error: ${e?.message || String(e)}`;
+    const msg = e.message || String(e);
+    const pos = e.position || 'unknown';
+    const charCode = cleanQuery.length > 0 ? cleanQuery.charCodeAt(0) : 'N/A';
+    return `Query Error: ${msg} (at pos ${pos}, first char code: ${charCode}). Query: "${cleanQuery}"`;
   }
 };
 
@@ -76,10 +78,38 @@ export const queryJson = async (data: any, queryStr: string, mode: 'standard' | 
 
 /**
  * Translates a standard path to a JSONata expression.
+ * Escapes identifiers that start with a digit or contain special characters.
  */
 export const translatePathToSql = (path: string): string => {
   if (!path || path === '$') return '$';
-  return path.startsWith('$.') ? path.substring(2) : path;
+  
+  let cleanPath = path.startsWith('$.') ? path.substring(2) : (path.startsWith('$') ? path.substring(1) : path);
+  if (!cleanPath) return '$';
+
+  // Split into segments, treating brackets as part of a dot-notated path for processing
+  const segments = cleanPath.replace(/\[/g, '.[').split('.').filter(Boolean);
+  
+  const escapedSegments = segments.map(segment => {
+    // Array index access like [0] should remain as is
+    if (segment.startsWith('[') && segment.endsWith(']')) {
+      return segment;
+    }
+    
+    // JSONata identifiers must start with a letter, _, or $ 
+    // and contain only letters, numbers, _, or $
+    // If it starts with a digit or has other chars, it must be backticked
+    const isValidIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(segment);
+    
+    if (isValidIdentifier) {
+      return segment;
+    }
+    
+    // Escape with backticks
+    return `\`${segment}\``;
+  });
+
+  // Rejoin and fix the bracket notation (remove the extra dot we added for splitting)
+  return escapedSegments.join('.').replace(/\.\[/g, '[');
 };
 
 /**

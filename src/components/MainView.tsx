@@ -7,7 +7,7 @@ import QueryResult from './QueryResult';
 import Popover from './Popover';
 import { translatePathToSql, jsonToCsv } from '../utils/jsonQuery';
 
-import ProcessorWorker from '../processor.worker?worker';
+import ProcessorWorker from '../workers/processor.worker?worker';
 
 interface MainViewProps {
   jsonData: any;
