@@ -144,7 +144,7 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
       const currentLine = lines.length;
       const currentChar = lines[lines.length - 1].length;
       setSuggestionPos({
-        top: currentLine * 24 + 10,
+        top: currentLine * 24 + 25,
         left: currentChar * 9 + 20
       });
     } else {

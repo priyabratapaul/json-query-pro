@@ -32,4 +32,25 @@ JSON Query Pro is engineered to push the limits of the browser:
 5. **Backup**: Use the Settings tab to export a full backup of your queries and data.
 
 ---
-*Built for engineers who value speed, privacy, and clarity.*
+
+## 🏗 Tech Stack
+
+- **Framework**: React 19.x (ESM via importmaps)
+- **Build Tool**: Vite 6.x (Worker-aware configuration)
+- **Concurrency**: Web Workers (Dedicated thread for Data Engine)
+- **Query Engines**:
+  - Native recursive traversal (`evaluatePath`)
+  - [JSONata 2.1.0](https://jsonata.org/) (Asynchronous evaluation)
+- **Persistence**: 
+  - `IndexedDB`: Large Dataset storage via structured clone.
+  - `LocalStorage`: Metadata, UI Settings, and Query History.
+
+## 🚀 Development Setup
+
+The project uses browser-native ESM. No transpilation is required for modern browsers.
+1. Run `npm install` to fetch dependencies.
+2. Run `npm run dev` to start the Vite development server.
+3. Access the app at `http://localhost:3000`.
+
+---
+

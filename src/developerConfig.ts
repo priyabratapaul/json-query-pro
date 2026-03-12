@@ -190,7 +190,7 @@ export const developerConfig = {
     about: {
       header: 'About',
       appName: 'JSON Query Pro',
-      version: 'v1.0.0',
+      version: 'v1.1.0',
       visionHeader: 'Vision',
       visionText: 'JSON Query Pro is a high-performance, developer-first tool designed to handle massive data structures with ease. My goal is to make data exploration and extraction as seamless as possible for fellow engineers and any interested users.',
       archHeader: 'Architecture',
