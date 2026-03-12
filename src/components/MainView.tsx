@@ -335,6 +335,7 @@ const MainView: React.FC<MainViewProps> = ({ jsonData, setJsonData, settings, sa
             mode={queryMode} setMode={setQueryMode} onExecute={handleExecute}
             onLoadSaved={(q) => { setQueryMode(q.mode); if (q.mode === 'standard') setStandardQuery(q.query); else setSqlQuery(q.query); }}
             savedQueries={savedQueries} setSavedQueries={setSavedQueries} settings={settings} autoExecute={autoExecute} setAutoExecute={setAutoExecute}
+            jsonData={jsonData}
           />
         </div>
         <div className={`flex-none h-[40vh] lg:flex-1 flex flex-col bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800 ${cornerClass} overflow-hidden`}>

@@ -153,3 +153,31 @@ export const jsonToCsv = (data: any): string => {
 };
 
 export const initSqlEngine = (_data: any) => {};
+
+/**
+ * Extracts all unique keys from a JSON object recursively.
+ */
+export const getAllKeys = (data: any, maxDepth = 5): string[] => {
+  if (!data) return [];
+  const keys = new Set<string>();
+  
+  const extract = (obj: any, depth: number) => {
+    if (depth > maxDepth || obj === null || typeof obj !== 'object') return;
+    
+    if (Array.isArray(obj)) {
+      // For arrays, we only check the first few items to save performance
+      const sampleSize = Math.min(obj.length, 10);
+      for (let i = 0; i < sampleSize; i++) {
+        extract(obj[i], depth + 1);
+      }
+    } else {
+      Object.keys(obj).forEach(key => {
+        keys.add(key);
+        extract(obj[key], depth + 1);
+      });
+    }
+  };
+  
+  extract(data, 0);
+  return Array.from(keys).sort();
+};

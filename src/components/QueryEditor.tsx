@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { developerConfig } from '../developerConfig';
 import { QueryMode, AppSettings, SavedQuery } from '../types';
 import Popover from './Popover';
+import { getAllKeys } from '../utils/jsonQuery';
 
 interface QueryEditorProps {
   query: string;
@@ -15,6 +16,7 @@ interface QueryEditorProps {
   settings: AppSettings;
   autoExecute: boolean;
   setAutoExecute: (val: boolean) => void;
+  jsonData: any;
 }
 
 const QueryEditor: React.FC<QueryEditorProps> = ({ 
@@ -28,16 +30,28 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
   setSavedQueries,
   settings,
   autoExecute,
-  setAutoExecute
+  setAutoExecute,
+  jsonData
 }) => {
   const [copiedHeader, setCopiedHeader] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showSave, setShowSave] = useState(false);
   const [querySaveName, setQuerySaveName] = useState('');
   
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [currentWord, setCurrentWord] = useState('');
+  
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const historyBtnRef = useRef<HTMLButtonElement>(null);
   const saveBtnRef = useRef<HTMLButtonElement>(null);
   const { editor: labels } = developerConfig.labels;
+
+  // Extract keys for autocomplete
+  const availableKeys = useMemo(() => getAllKeys(jsonData), [jsonData]);
 
   const handleCopyHeader = async () => {
     if (!query) return;
@@ -62,6 +76,83 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
     setSavedQueries(prev => [newSavedQuery, ...prev]);
     setShowSave(false);
     setQuerySaveName('');
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    const pos = e.target.selectionStart;
+    setQuery(val);
+
+    // Autocomplete logic
+    const textBeforeCursor = val.substring(0, pos);
+    const match = textBeforeCursor.match(/[\w$]+$/);
+    
+    if (match) {
+      const word = match[0];
+      setCurrentWord(word);
+      const filtered = availableKeys.filter(k => 
+        k.toLowerCase().startsWith(word.toLowerCase()) && k !== word
+      );
+      
+      if (filtered.length > 0) {
+        setSuggestions(filtered.slice(0, 10));
+        setSuggestionIndex(0);
+        setShowSuggestions(true);
+        
+        // Basic position estimation (not perfect for textarea but okay for now)
+        // In a real app we might use a library or a hidden mirror div
+        const lines = textBeforeCursor.split('\n');
+        const currentLine = lines.length;
+        const currentChar = lines[lines.length - 1].length;
+        setSuggestionPos({
+          top: currentLine * 24 + 10, // Rough line height
+          left: currentChar * 9 + 20   // Rough char width
+        });
+      } else {
+        setShowSuggestions(false);
+      }
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    if (!textareaRef.current) return;
+    const pos = textareaRef.current.selectionStart;
+    const textBeforeCursor = query.substring(0, pos);
+    const textAfterCursor = query.substring(pos);
+    
+    const lastWordMatch = textBeforeCursor.match(/[\w$]+$/);
+    if (lastWordMatch) {
+      const newTextBefore = textBeforeCursor.substring(0, lastWordMatch.index) + suggestion;
+      setQuery(newTextBefore + textAfterCursor);
+      
+      // Reset cursor position after state update
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = textareaRef.current.selectionEnd = newTextBefore.length;
+          textareaRef.current.focus();
+        }
+      }, 0);
+    }
+    setShowSuggestions(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showSuggestions) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSuggestionIndex(prev => (prev + 1) % suggestions.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSuggestionIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        applySuggestion(suggestions[suggestionIndex]);
+      } else if (e.key === 'Escape') {
+        setShowSuggestions(false);
+      }
+    }
   };
 
   const isRounded = settings.corners === 'rounded';
@@ -157,12 +248,37 @@ const QueryEditor: React.FC<QueryEditorProps> = ({
       {/* Editor Body */}
       <div className="flex-1 relative p-4 flex flex-col min-w-0">
         <textarea
+          ref={textareaRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           className={`flex-1 w-full bg-slate-50 dark:bg-slate-950 p-4 font-mono text-[1em] focus:outline-none focus:ring-1 focus:ring-slate-300 dark:focus:ring-slate-700 resize-none border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 ${inputCornerClass}`}
           placeholder={mode === 'sql' ? labels.placeholders.sql : labels.placeholders.standard}
           spellCheck={false}
         />
+        
+        {/* Autocomplete Suggestions */}
+        {showSuggestions && (
+          <div 
+            className={`absolute z-[100] bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden min-w-[150px] ${smallCornerClass}`}
+            style={{ 
+              top: `${Math.min(suggestionPos.top, (textareaRef.current?.clientHeight || 0) - 100)}px`, 
+              left: `${Math.min(suggestionPos.left, (textareaRef.current?.clientWidth || 0) - 150)}px` 
+            }}
+          >
+            {suggestions.map((s, i) => (
+              <button
+                key={s}
+                onClick={() => applySuggestion(s)}
+                onMouseEnter={() => setSuggestionIndex(i)}
+                className={`w-full text-left px-3 py-1.5 text-[0.85em] font-mono transition-colors ${i === suggestionIndex ? 'bg-blue-500 text-white' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
         
         <div className="absolute bottom-6 right-6">
           <button 
