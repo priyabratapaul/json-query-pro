@@ -39,7 +39,12 @@ export const evaluatePath = (data: any, path: string): any => {
         current = undefined;
       }
     } else {
-      current = current[segment];
+      const currentObj = current as any;
+      if (Array.isArray(current) && current.length > 0 && currentObj[segment] === undefined) {
+        current = (current[0] as any)[segment];
+      } else {
+        current = currentObj[segment];
+      }
     }
   }
   return current;
